@@ -14,73 +14,74 @@ library(ggplot2)
 library(tidyverse)
 library(spacyr)
 library(textdata)
+library(spacyr)
 
 #read in pdfs
 #folder where files are located
-iwf_path <- "/Users/tarapozzi/Desktop/contentintro/IWF"
-cbd_path <- "/Users/tarapozzi/Desktop/contentintro/CBD"
+ioem_path <- "C:/Users/tarapozzi/Documents/Spring 2020/HES 600/Content-Analysis/IOEM"
+news_path <- "C:/Users/tarapozzi/Documents/Spring 2020/HES 600/Content-Analysis//NEWS"
 #read pdfs
-iwf_pdfs <- list.files(path = iwf_path, pattern = 'pdf$',  full.names = TRUE) 
-iwf_texts <- readtext(iwf_pdfs, 
+ioem_pdfs <- list.files(path = ioem_path, pattern = 'pdf$',  full.names = TRUE) 
+ioem_texts <- readtext(ioem_pdfs, 
                         sep = "_", 
                         docvarnames = c("First_author", "Year"))
 
-cbd_pdfs <- list.files(path = cbd_path, pattern = 'pdf$',  full.names = TRUE) 
-cbd_texts <- readtext(cbd_pdfs, 
+news_pdfs <- list.files(path = news_path, pattern = 'pdf$',  full.names = TRUE) 
+news_texts <- readtext(news_pdfs, 
                       sep = "_", 
                       docvarnames = c("First_author", "Year"))
 
 #convert to corpus
-iwf_corpus  <- corpus(iwf_texts)
-cbd_corpus <- corpus(cbd_texts)
+ioem_corpus  <- corpus(ioem_texts)
+news_corpus <- corpus(news_texts)
 
 # Some stats about the news releases
-summary(iwf_corpus)
-summary(cbd_corpus)
+summary(ioem_corpus)
+summary(news_corpus)
 
 
-metadoc(iwf_corpus, 'language') <- "english" 
-metadoc(cbd_corpus, 'language') <- "english" 
+metadoc(ioem_corpus, 'language') <- "english" 
+metadoc(news_corpus, 'language') <- "english" 
 
 #buidliing a document frequency matrix (DFM)
 # you are getting rid of stop words which are specified under remove
-iwf_DFM <- dfm(iwf_corpus, tolower = TRUE, stem = FALSE, 
-                  remove = c("et", "al", "fig", "table", "ml", "http",
+ioem_DFM <- dfm(ioem_corpus, tolower = TRUE, stem = FALSE, 
+                  remove = c("et", "al", "fig", "table", "ml", "http", "cookies", "cookie", "S", "|"
                              stopwords("smart")),
                   remove_punct = TRUE, remove_numbers = TRUE)
 
-cbd_DFM <- dfm(cbd_corpus, tolower = TRUE, stem = FALSE, 
-               remove = c("et", "al", "fig", "table", "ml", "http",
+news_DFM <- dfm(news_corpus, tolower = TRUE, stem = FALSE, 
+               remove = c("et", "al", "fig", "table", "ml", "http","cookies", "cookie", "S", "|"
                           stopwords("smart")),
                remove_punct = TRUE, remove_numbers = TRUE)
 
 
 #summarise the two DFM's
-topfeatures(iwf_DFM, 20) 
-topfeatures(cbd_DFM, 20) 
+topfeatures(ioem_DFM, 20) 
+topfeatures(news_DFM, 20) 
 #this gives us an idea of the conversation across these articles 
 
 #visualize commonly used words
-textplot_wordcloud(iwf_DFM, min.freq = 15, random.order=F, 
+textplot_wordcloud(ioem_DFM, min.freq = 15, random.order=F, 
                    rot.per = .10,  
                    colors = RColorBrewer::brewer.pal(8,'Dark2')) 
 
-textplot_wordcloud(cbd_DFM, min.freq = 15, random.order=F, 
+textplot_wordcloud(news_DFM, min.freq = 15, random.order=F, 
                    rot.per = .10,  
                    colors = RColorBrewer::brewer.pal(8,'Dark2')) 
 
 ## Unsupervised classification of topics
-iwf_topicmod <- convert(iwf_DFM, to="topicmodels")
-iwf_lda <- LDA(iwf_topicmod, k=3) #k=3 tells you about three topics 
-iwf_topics <- tidy(iwf_lda, matrix="beta")
+ioem_topicmod <- convert(ioem_DFM, to="topicmodels")
+ioem_lda <- LDA(ioem_topicmod, k=3) #k=3 tells you about three topics 
+ioem_topics <- tidy(ioem_lda, matrix="beta")
 
-iwf_top_terms <- iwf_topics %>% 
+ioem_top_terms <- ioem_topics %>% 
   group_by(topic) %>%
   top_n(10, beta) %>%
   ungroup() %>%
   arrange(topic, -beta)
 
-iwf_top_terms %>%
+ioem_top_terms %>%
   mutate(term = reorder_within(term, beta, topic)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
@@ -89,17 +90,17 @@ iwf_top_terms %>%
   scale_x_reordered()  
 
 
-cbd_topicmod <- convert(cbd_DFM, to="topicmodels")
-cbd_lda <- LDA(cbd_topicmod, k=3)
-cbd_topics <- tidy(cbd_lda, matrix="beta")
+news_topicmod <- convert(news_DFM, to="topicmodels")
+news_lda <- LDA(news_topicmod, k=3)
+news_topics <- tidy(news_lda, matrix="beta")
 
-cbd_top_terms <- cbd_topics %>% 
+news_top_terms <- news_topics %>% 
   group_by(topic) %>%
   top_n(10, beta) %>%
   ungroup() %>%
   arrange(topic, -beta)
 
-cbd_top_terms %>%
+news_top_terms %>%
   mutate(term = reorder_within(term, beta, topic)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
@@ -110,7 +111,7 @@ cbd_top_terms %>%
 # this uses machine learning to determine the topics so everytime it is run the answer will be slightly different, however when you have a large sample size you will reach a converging point of common topics
 
 #sentiment analysis
-tidy(iwf_DFM) %>%   
+tidy(ioem_DFM) %>%   
   inner_join(get_sentiments("bing"), by = c(term = "word")) %>% 
   count(sentiment, term, wt = count) %>%
   ungroup() %>%
@@ -122,7 +123,7 @@ tidy(iwf_DFM) %>%
   ylab("Contribution to sentiment") +
   coord_flip()
 
-tidy(cbd_DFM) %>%   
+tidy(news_DFM) %>%   
   inner_join(get_sentiments("bing"), by = c(term = "word")) %>% 
   count(sentiment, term, wt = count) %>%
   ungroup() %>%
@@ -134,7 +135,7 @@ tidy(cbd_DFM) %>%
   ylab("Contribution to sentiment") +
   coord_flip()
 
-tidy(iwf_DFM) %>%   
+tidy(ioem_DFM) %>%   
   inner_join(get_sentiments("nrc"), by = c(term = "word")) %>% 
   count(sentiment, term, wt = count) %>%
   ungroup() %>%
@@ -146,7 +147,7 @@ tidy(iwf_DFM) %>%
   ylab("Contribution to sentiment") +
   coord_flip()
 
-tidy(cbd_DFM) %>%   
+tidy(news_DFM) %>%   
   inner_join(get_sentiments("nrc"), by = c(term = "word")) %>% 
   count(sentiment, term, wt = count) %>%
   ungroup() %>%
@@ -160,13 +161,13 @@ tidy(cbd_DFM) %>%
 
 
 ## Using additional words for context
-iwf_bigrams <- tidy(iwf_corpus) %>%
+ioem_bigrams <- tidy(ioem_corpus) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% # this looks for a two word phrase
   separate(bigram, c("word1", "word2"), sep=" ") %>% 
   filter(word1 == "not") %>%
   count(word1, word2, sort = TRUE)
 
-cbd_bigrams <- tidy(cbd_corpus) %>%
+news_bigrams <- tidy(news_corpus) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
   separate(bigram, c("word1", "word2"), sep=" ") %>% 
   filter(word1 == "not") %>%
@@ -174,14 +175,14 @@ cbd_bigrams <- tidy(cbd_corpus) %>%
 
 negation_words <- c("not", "no", "never", "without")
 
-iwf_notwords <- tidy(iwf_corpus) %>%
+ioem_notwords <- tidy(ioem_corpus) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
   separate(bigram, c("word1", "word2"), sep=" ") %>% 
   filter(word1 %in% negation_words) %>% 
   inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
   count(word2, value, sort = TRUE)
 
-cbd_notwords <- tidy(cbd_corpus) %>%
+news_notwords <- tidy(news_corpus) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
   separate(bigram, c("word1", "word2"), sep=" ") %>% 
   filter(word1 %in% negation_words) %>% 
@@ -189,7 +190,7 @@ cbd_notwords <- tidy(cbd_corpus) %>%
   count(word2, value, sort = TRUE)
 
 
-iwf_notwords %>%
+ioem_notwords %>%
   mutate(contribution = n * value) %>%
   arrange(desc(abs(contribution))) %>%
   head(20) %>%
@@ -200,7 +201,7 @@ iwf_notwords %>%
   ylab("Sentiment value * number of occurrences") +
   coord_flip()
 
-cbd_notwords %>%
+news_notwords %>%
   mutate(contribution = n * value) %>%
   arrange(desc(abs(contribution))) %>%
   head(20) %>%
